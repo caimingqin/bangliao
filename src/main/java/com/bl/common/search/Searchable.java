@@ -1,5 +1,6 @@
 package com.bl.common.search;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -9,7 +10,11 @@ import java.util.Set;
 
 import com.bl.common.exception.SearchException;
 
-public class Searchable {
+public class Searchable implements Serializable{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3695732719935982065L;
 	private String orderByClause;
 	private int pageNum=1;
 	private int pageSize=10;
@@ -308,8 +313,15 @@ public class Searchable {
 	}
 	
 
-	protected abstract static class GeneratedCriteria {
+	protected abstract static class GeneratedCriteria implements Serializable{
 
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -7341575979589293160L;
+		/**
+		 * 
+		 */
 		protected List<Criterion> criteria;
 
 		protected GeneratedCriteria() {
@@ -464,6 +476,10 @@ public class Searchable {
 	}
 
 	public static class Criteria extends GeneratedCriteria {
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 3243182228687684747L;
 		/**
 		 * 添加这两个属性用区分 and 和 or
 		 * 的查询条件 @see#com.bl.common.search.Searchable.createAddCriteria()
