@@ -1,6 +1,7 @@
 package com.bl.common.search;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -10,12 +11,22 @@ import com.bl.common.exception.SearchException;
 
 public class Searchable {
 	private String orderByClause;
-	private int pageNum;
-	private int pageSize;
+	private int pageNum=1;
+	private int pageSize=10;
 	private boolean distinct;
 
 	private StringBuilder orderByClauseBuilder;
 	private List<Criteria> oredCriteria;
+
+	/**
+	 * 记录最后更新人标识，记录用户的UUID
+	 */
+	private String updateBy;
+
+	/**
+	 * 记录最后更新日期
+	 */
+	private Date updateDate;
 
 	public Searchable() {
 		oredCriteria = new ArrayList<Criteria>();
@@ -30,7 +41,9 @@ public class Searchable {
 	}
 
 	public String getOrderByClause() {
-		orderByClause = orderByClauseBuilder.subSequence(0, orderByClauseBuilder.lastIndexOf(",")).toString();
+		if (orderByClause != null) {
+			orderByClause = orderByClauseBuilder.subSequence(0, orderByClauseBuilder.lastIndexOf(",")).toString();
+		}
 		return orderByClause;
 	}
 
@@ -64,6 +77,22 @@ public class Searchable {
 		this.pageSize = pageSize;
 	}
 
+	public String getUpdateBy() {
+		return updateBy;
+	}
+
+	public void setUpdateBy(String updateBy) {
+		this.updateBy = updateBy;
+	}
+
+	public Date getUpdateDate() {
+		return updateDate;
+	}
+
+	public void setUpdateDate(Date updateDate) {
+		this.updateDate = updateDate;
+	}
+
 	/**
 	 * 创建一个新的查询
 	 *
@@ -84,7 +113,7 @@ public class Searchable {
 	 * @return
 	 */
 	public Searchable and(final String searchKey, final Object value) throws SearchException {
-		Criteria criteria = this.createAddCriteria();
+		Criteria criteria = this.and();
 		addSearchParam(searchKey, value, criteria);
 		return this;
 	}
@@ -255,19 +284,15 @@ public class Searchable {
 		return criteria;
 	}
 
-	private Criteria createAddCriteria() {
-		Criteria criteria = createOrCriteria();
-		criteria.setAnd(true);
-		if (oredCriteria.size() == 0) {
-			oredCriteria.add(criteria);
-		} else {
-			for (Criteria c : this.oredCriteria) {
-				if (c.isAnd()) {
-					return c;
-				}
+	private Criteria and() {
+		for (Criteria c : this.oredCriteria) {
+			if (c.isAnd()) {
+				return c;
 			}
 		}
-		return criteria;
+		Criteria createAndCriteria = createAndCriteria();
+		oredCriteria.add(createAndCriteria);
+		return createAndCriteria;
 	}
 
 	private Criteria createOrCriteria() {
@@ -275,6 +300,13 @@ public class Searchable {
 		criteria.setOr(true);
 		return criteria;
 	}
+	
+	private Criteria createAndCriteria() {
+		Criteria criteria = new Criteria();
+		criteria.setAnd(true);
+		return criteria;
+	}
+	
 
 	protected abstract static class GeneratedCriteria {
 

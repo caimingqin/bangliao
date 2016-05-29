@@ -28,4 +28,5 @@ public interface BaseMapper<M extends BaseEntity> {
     Page<M> pageList(Map<String, Object> queryParams);
 	List<M> findAllBySearchable(Searchable searchable);
 	Page<M> findPageBySearchable(Searchable searchable);
+	int deleteBySearchable(Searchable searchable);
 }

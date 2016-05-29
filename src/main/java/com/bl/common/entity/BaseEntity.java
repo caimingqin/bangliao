@@ -25,6 +25,12 @@ public abstract class BaseEntity  implements LogicDeleteable,Serializable{
 	 */
 	private static final long serialVersionUID = -9196583770731157014L;
 
+	public static final String f_id="id";
+	public static final String f_createBy="createBy";
+	public static final String f_createDate="createDate";
+	public static final String f_updateBy="updateBy";
+	public static final String f_updateDate="updateDate";
+	public static final String f_version="version";
 	/**
 	 * UUID
 	 */
@@ -49,8 +55,15 @@ public abstract class BaseEntity  implements LogicDeleteable,Serializable{
 	 * 记录最后更新日期
 	 */
 	private Date updateDate;
-	
+	/**
+	 * 版本号
+	 */
 	private int version;
+	
+	/**
+	 * 逻辑删除标志
+	 */
+	private String isDeleted = "0";
 	
 	/** 
 	 * @return createBy 
@@ -147,10 +160,6 @@ public abstract class BaseEntity  implements LogicDeleteable,Serializable{
 		this.isDeleted = "1";
 	}
 
-	/**
-	 * 逻辑删除标志
-	 */
-	private String isDeleted = "0";
 
     public String getId() {
         return id;

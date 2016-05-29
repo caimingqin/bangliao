@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.bl.common.entity.BaseEntity;
 import com.bl.common.exception.BusinessException;
+import com.bl.common.exception.ErrorCode;
 import com.bl.common.mapper.BaseMapper;
 import com.bl.common.plugin.page.Page;
 import com.bl.common.plugin.page.PageHelper;
@@ -49,13 +50,23 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @see com.bl.common.service.BaseService#save(M)
 	 */
 	@Override
-	public int save(M m) {
-		BaseEntity bs = (BaseEntity) m;
-		if (bs.getId() == null) {
-			this.preSave(m);
-			return this.baseMapper.insert(m);
-		} else {
-			return this.update(m);
+	public void save(M m) throws BusinessException {
+		try {
+			BaseEntity bs = (BaseEntity) m;
+			if (bs.getId() == null) {
+				this.preSave(m);
+				int insert = this.baseMapper.insert(m);
+				if (insert == 0) {
+					throw new BusinessException(ErrorCode.SERVER_SAVE,"保存失败");
+				}
+			} else {
+				int update = this.update(m);
+				if (update == 0) {
+					throw new BusinessException(ErrorCode.SERVER_UPDATE,"更新失败");
+				}
+			}
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
 		}
 
 	}
@@ -66,39 +77,46 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @return
 	 * @see com.bl.common.service.BaseService#update(M)
 	 */
-	private int update(M m) {
+	private int update(M m) throws BusinessException {
 		this.preUpdate(m);
 		return baseMapper.updateByPrimaryKey(m);
 	}
 
 	@Override
-	public int delete(String id) {
-		M m = this.get(id);
-		if (m == null) {
-			return 0;
+	public void delete(String id) throws BusinessException {
+		try {
+			M m = this.get(id);
+			if (m == null) {
+				throw new BusinessException(ErrorCode.SERVER_DELETE,"没有可更新的数据");
+			}
+			this.markDeleted(m);
+			int deleteByEntity = deleteByEntity(m);
+			if (deleteByEntity == 0) {
+				throw new BusinessException(ErrorCode.SERVER_DELETE,"删除数据失败");
+			}
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
 		}
-		this.markDeleted(m);
-		return deleteByEntity(m);
+
 	}
 
 	private void markDeleted(M m) {
 		BaseEntity bs = (BaseEntity) m;
 		bs.setUpdateDate(new Date());
-		bs.markDeleted();
-		
+		bs.setUpdateBy("sys");// TODO
 	}
 
 	private void preSave(M m) {
 		BaseEntity bs = (BaseEntity) m;
 		bs.setCreateDate(new Date());
 		bs.setId(IdUtil.getUUId());
-		// bs.setCreateBy("caimingqin");
+		bs.setCreateBy("createBy"); // TODO
 	}
 
 	private void preUpdate(M m) {
 		BaseEntity bs = (BaseEntity) m;
 		bs.setUpdateDate(new Date());
-		// bs.setUpdateBy("updateByCcccc");
+		bs.setUpdateBy("UpdateBy");// TODO
 	}
 
 	private int deleteByEntity(M m) {
@@ -106,23 +124,38 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	}
 
 	@Override
-	public int delete(String[] ids) {
-		int deletedCount = 0;
-		for (String id : ids) {
-			M m = this.get(id);
-			if (m == null) {
-				throw new BusinessException("找不到可删除的记录ID[" + id + "]");
+	public void delete(String[] ids) throws BusinessException {
+		try {
+			int deletedCount = 0;
+			for (String id : ids) {
+				M m = this.get(id);
+				if (m == null) {
+					throw new BusinessException(ErrorCode.SERVER_DELETE,"找不到可删除的记录ID[" + id + "]");
+				}
+				int markDeletedNum = this.deleteByEntity(m);
+				if (markDeletedNum > 0) {
+					deletedCount++;
+
+				}
+				if (ids.length != deletedCount) {
+					throw new BusinessException(ErrorCode.SERVER_DELETE,"批量删除异常");
+				}
 			}
-			int markDeletedNum = this.deleteByEntity(m);
-			if (markDeletedNum > 0) {
-				deletedCount++;
-			}
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
 		}
-		if (ids.length != deletedCount) {
-			throw new BusinessException("批量更新异常");
+	}
+
+	@Override
+	public void delete(Searchable searchable) throws BusinessException {
+		try {
+			searchable.setUpdateBy("sys");//TODO
+			searchable.setUpdateDate(new Date());
+			baseMapper.deleteBySearchable(searchable);
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
 		}
 
-		return deletedCount;
 	}
 
 	/**
@@ -132,8 +165,13 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @see com.bl.common.service.BaseService#findOne(String)
 	 */
 	@Override
-	public M findOne(String id) {
-		return baseMapper.selectByPrimaryKey(id);
+	public M findOne(String id) throws BusinessException {
+		try {
+			return baseMapper.selectByPrimaryKey(id);
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
+		}
+
 	}
 
 	/**
@@ -143,8 +181,13 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @see com.bl.common.service.BaseService#get(String)
 	 */
 	@Override
-	public M get(String id) {
-		return baseMapper.selectByPrimaryKey(id);
+	public M get(String id) throws BusinessException {
+		try {
+			return baseMapper.selectByPrimaryKey(id);
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
+		}
+
 	}
 
 	/**
@@ -154,12 +197,17 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @see com.bl.common.service.BaseService#exists(String)
 	 */
 	@Override
-	public boolean exists(String id) {
-		M m = this.get(id);
-		if (m != null) {
-			return true;
+	public boolean exists(String id) throws BusinessException {
+		try {
+			M m = this.get(id);
+			if (m != null) {
+				return true;
+			}
+			return false;
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
 		}
-		return false;
+
 	}
 
 	/**
@@ -168,8 +216,13 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @see com.bl.common.service.BaseService#count()
 	 */
 	@Override
-	public long count() {
-		return baseMapper.count();
+	public long count() throws BusinessException {
+		try {
+			return baseMapper.count();
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_RUNTIME,"系统异常");
+		}
+
 	}
 
 	/**
@@ -178,37 +231,60 @@ public abstract class AbstractBaseService<M extends BaseEntity> implements BaseS
 	 * @see com.bl.common.service.BaseService#findAll()
 	 */
 	@Override
-	public List<M> findAll() {
-		return baseMapper.findAll();
-	}
-
-	@Override
-	public PageInfo<M> pageList(Map<String, Object> queryParams, int pageNum) {
-		return this.pageList(queryParams, pageNum, 10);
-	}
-
-	@Override
-	public PageInfo<M> pageList(Map<String, Object> queryParams, int pageNum, int pageSize) {
-		if (pageSize == 0) {
-			pageSize = 10;
+	public List<M> findAll() throws BusinessException {
+		try {
+			return baseMapper.findAll();
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_QUERY,e.getMessage());
 		}
-		PageHelper.startPage(pageNum, pageSize);
-		Page<M> page = baseMapper.pageList(queryParams);
 
-		return page.toPageInfo();
 	}
 
 	@Override
-	public PageInfo<M> findPage(Searchable searchable) {
-		PageHelper.startPage(searchable.getPageNum(), searchable.getPageSize());
-		Page<M> page = baseMapper.findPageBySearchable(searchable);
-		return page.toPageInfo();
+	public PageInfo<M> pageList(Map<String, Object> queryParams, int pageNum) throws BusinessException {
+		try {
+			return this.pageList(queryParams, pageNum, 10);
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_QUERY,e.getMessage());
+		}
+
 	}
 
 	@Override
-	public List<M> findAll(Searchable searchable) {
+	public PageInfo<M> pageList(Map<String, Object> queryParams, int pageNum, int pageSize) throws BusinessException {
+		try {
+			if (pageSize == 0) {
+				pageSize = 10;
+			}
+			PageHelper.startPage(pageNum, pageSize);
+			Page<M> page = baseMapper.pageList(queryParams);
+			return page.toPageInfo();
+		} catch (Exception e) {
+			throw new BusinessException(ErrorCode.SERVER_QUERY,e.getMessage());
+		}
 
-		return baseMapper.findAllBySearchable(searchable);
+	}
+
+	@Override
+	public PageInfo<M> findPage(Searchable searchable) throws BusinessException {
+		try {
+			PageHelper.startPage(searchable.getPageNum(), searchable.getPageSize());
+			Page<M> page = baseMapper.findPageBySearchable(searchable);
+			return page.toPageInfo();
+		} catch (Exception e) {
+			throw new BusinessException(e.getMessage());
+		}
+
+	}
+
+	@Override
+	public List<M> findAll(Searchable searchable) throws BusinessException {
+		try {
+
+			return baseMapper.findAllBySearchable(searchable);
+		} catch (Exception e) {
+			throw new BusinessException(e.getMessage());
+		}
 	}
 
 }

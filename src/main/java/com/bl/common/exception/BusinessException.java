@@ -53,6 +53,14 @@ public class BusinessException extends BaseException {
     public BusinessException(String defaultMessage) {
         this(null, null, defaultMessage, null);
     }
+    
+    /**
+     * 构造基础异常
+     * @param defaultMessage 默认异常消息
+     */
+    public BusinessException(String code,String defaultMessage) {
+        this(code, null, defaultMessage, null);
+    }
     /**
      * 
      * 构造基础异常
@@ -74,4 +82,12 @@ public class BusinessException extends BaseException {
         this(code, args, null, null);
     }
 
+
+    /**
+     * 优化：覆盖这个方法可提高10倍性能，业务类异常不需要堆栈信息
+     */
+    @Override
+    public  Throwable fillInStackTrace() {
+    	return this;
+    }
 }
